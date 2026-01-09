@@ -86,10 +86,16 @@ def run_demo():
     print(f"Anti-Double-Count Keys: {ledger.anti_double_count_keys}")
 
 def main():
-    if len(sys.argv) > 1 and sys.argv[1] == "demo":
-        run_demo()
+    if len(sys.argv) > 1:
+        if sys.argv[1] == "demo":
+            run_demo()
+        elif sys.argv[1] == "serve":
+            import uvicorn
+            uvicorn.run("voltyield_ledger_core.api:app", host="0.0.0.0", port=8000)
+        else:
+            print("Usage: python -m voltyield_ledger_core.cli [demo|serve]")
     else:
-        print("Usage: python -m volltyield_ledger_core.cli demo")
+        print("Usage: python -m voltyield_ledger_core.cli [demo|serve]")
 
 if __name__ == "__main__":
     main()

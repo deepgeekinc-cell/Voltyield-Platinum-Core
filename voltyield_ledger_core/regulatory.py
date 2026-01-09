@@ -13,6 +13,27 @@ class RegulatoryEngine:
     def __init__(self, rulepack_version: str):
         self.version = rulepack_version
 
+    def evaluate_us_45w(self, asset_cost_minor: int, vehicle_weight_lbs: int, is_electric: bool = True) -> RuleResult:
+        """
+        US Section 45W Commercial Clean Vehicle Credit.
+        Logic: 30% of basis for EVs (15% hybrids).
+        Caps: $7,500 if < 14,000 lbs, $40,000 if >= 14,000 lbs.
+        """
+        rate = 0.30 if is_electric else 0.15
+        credit_amount = int(asset_cost_minor * rate)
+
+        cap = 4000000 if vehicle_weight_lbs >= 14000 else 750000
+
+        final_amount = min(credit_amount, cap)
+
+        trace = {
+            "weight_lbs": vehicle_weight_lbs,
+            "rate": rate,
+            "uncapped_amount": credit_amount,
+            "cap": cap
+        }
+        return RuleResult("US_45W", True, final_amount, trace)
+
     def evaluate_30c(self, tract_geoid: str, service_date: str, is_eligible_tract: bool) -> RuleResult:
         """US Section 30C Infrastructure Credit."""
         trace = {"geoid": tract_geoid, "date": service_date}
