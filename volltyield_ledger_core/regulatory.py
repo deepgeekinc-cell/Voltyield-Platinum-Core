@@ -73,5 +73,38 @@ class RegulatoryEngine:
         }
         return RuleResult("UK_VAT", eligible, vat_amount if eligible else 0, trace)
 
+    def evaluate_us_macrs_2026(self, asset_cost_minor: int, placed_in_service_date: str, tax_bracket_percent: float = 0.21) -> RuleResult:
+        """
+        US MACRS Bonus Depreciation Rule (US_MACRS_2026).
+        Calculates Depreciation Tax Shield based on bonus depreciation rates.
+        """
+        year = int(placed_in_service_date[:4])
+
+        bonus_rate = 0.0
+        if year == 2024:
+            bonus_rate = 0.60
+        elif year == 2025:
+            bonus_rate = 0.40
+        elif year == 2026:
+            bonus_rate = 0.20
+
+        # Avoid float math where possible using integer arithmetic for rate application
+        bonus_basis = 0
+        if year == 2024:
+            bonus_basis = (asset_cost_minor * 60) // 100
+        elif year == 2025:
+            bonus_basis = (asset_cost_minor * 40) // 100
+        elif year == 2026:
+            bonus_basis = (asset_cost_minor * 20) // 100
+
+        tax_savings = int(bonus_basis * tax_bracket_percent)
+
+        trace = {
+            "bonus_rate": bonus_rate,
+            "tax_bracket": tax_bracket_percent
+        }
+
+        return RuleResult("US_MACRS_2026", True, tax_savings, trace)
+
     def get_fingerprint(self) -> str:
         return hashlib.sha256(self.version.encode()).hexdigest()
