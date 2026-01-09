@@ -1,5 +1,5 @@
 import pytest
-from volltyield_ledger_core.regulatory import RegulatoryEngine
+from voltyield_ledger_core.regulatory import RegulatoryEngine
 
 def test_us_macrs_2026():
     engine = RegulatoryEngine("v1")

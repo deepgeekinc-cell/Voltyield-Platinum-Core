@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "volltyield-ledger-core"
+name = "voltyield-ledger-core"
 version = "0.1.0"
 description = "Deterministic, audit-ready compliance infrastructure for EV yield."
 requires-python = ">=3.11"
@@ -15,5 +15,5 @@ dependencies = [
 dev = ["pytest>=7.0.0"]
 
 [project.scripts]
-volltyield-ledger = "volltyield_ledger_core.cli:main"
+voltyield-ledger = "voltyield_ledger_core.cli:main"
 platinum = "voltyield_platinum.cli:main"
