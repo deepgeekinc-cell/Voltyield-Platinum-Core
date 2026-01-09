@@ -33,6 +33,15 @@ def run_demo():
     # 3. Rules
     # US Rule
     res_30c = engine.evaluate_30c("06037101110", "2026-01-05", True)
+
+    # US 45W Commercial Vehicle Rule + MACRS
+    vehicle_weight_lbs = 16000
+    is_tax_exempt = False
+    vehicle_cost_minor = 5500000 # $55,000
+
+    res_45w = engine.evaluate_us_45w(vehicle_weight_lbs, vehicle_cost_minor, is_tax_exempt)
+    res_macrs = engine.evaluate_us_macrs(vehicle_cost_minor)
+
     # UK Rule (simulating a UK scenario as well, or just evaluating all rules)
     res_mtd = engine.evaluate_uk_mtd(True)
     # UK VAT Rule
@@ -40,14 +49,22 @@ def run_demo():
 
     # Setup Basis
     # We pretend we have enough basis for 30C but limited for others?
-    # 30C amount is 100000. VAT is 300.
-    # Let's say we have ample GENERAL basis.
-    total_basis = {"GENERAL": 200000}
+    # 30C amount is 100000. VAT is 300. 45W is 4000000. MACRS is ~231000.
+    # Let's say we have ample GENERAL basis for everything in this demo.
+    total_basis = {"GENERAL": 100000000}
 
     # 4. Optimization
     # We pass all results. The optimizer will select based on basis availability.
-    # Note: 30C returns 100000. VAT returns ~300.
-    plan = optimizer.optimize([res_30c, res_mtd, res_vat], total_basis)
+    plan = optimizer.optimize([res_30c, res_45w, res_macrs, res_mtd, res_vat], total_basis)
+
+    # Calculate Total Incentives (Cash + Tax Shield)
+    total_incentives_minor = res_45w.amount + res_macrs.amount
+    print(f"\n--- US Vehicle Incentives ---")
+    print(f"Vehicle Weight: {vehicle_weight_lbs} lbs")
+    print(f"Vehicle Cost:   ${vehicle_cost_minor / 100:,.2f}")
+    print(f"45W Credit:     ${res_45w.amount / 100:,.2f}")
+    print(f"MACRS Shield:   ${res_macrs.amount / 100:,.2f}")
+    print(f"Total Value:    ${total_incentives_minor / 100:,.2f}")
 
     # 5. Ledger Commit
     for item in plan.chosen_incentives:

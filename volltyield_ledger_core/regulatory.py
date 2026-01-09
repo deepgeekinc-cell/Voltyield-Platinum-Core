@@ -10,41 +10,8 @@ class RuleResult:
         self.trace = trace
 
 class RegulatoryEngine:
-    rules_registry = {
-        "US_45W_2026": {
-            "effective_from": "2023-01-01",
-            "effective_to": "2032-12-31",
-            "jurisdiction": "US"
-        }
-    }
-
     def __init__(self, rulepack_version: str):
         self.version = rulepack_version
-
-    def evaluate_us_45w(self, ref_date: str, vehicle_weight_lbs: int, sale_price_minor: int, is_tax_exempt_entity: bool) -> RuleResult:
-        """US Commercial Clean Vehicle Credit (Section 45W)."""
-        rule_meta = self.rules_registry["US_45W_2026"]
-
-        # Sunset Check
-        if not (rule_meta["effective_from"] <= ref_date <= rule_meta["effective_to"]):
-            return RuleResult("US_45W_2026", False, 0, {"reason": "sunset_check_failed"})
-
-        # Cap Determination
-        if vehicle_weight_lbs < 14000:
-            cap_limit = 750000  # $7,500 in minor units
-        else:
-            cap_limit = 4000000 # $40,000 in minor units
-
-        # Credit Calculation
-        calculated_15_percent = (sale_price_minor * 15) // 100
-        final_amount = min(calculated_15_percent, cap_limit)
-
-        trace = {
-            "vehicle_weight": vehicle_weight_lbs,
-            "cap_limit": cap_limit
-        }
-
-        return RuleResult("US_45W_2026", True, final_amount, trace)
 
     def evaluate_30c(self, tract_geoid: str, service_date: str, is_eligible_tract: bool) -> RuleResult:
         """US Section 30C Infrastructure Credit."""
@@ -73,38 +40,48 @@ class RegulatoryEngine:
         }
         return RuleResult("UK_VAT", eligible, vat_amount if eligible else 0, trace)
 
-    def evaluate_us_macrs_2026(self, asset_cost_minor: int, placed_in_service_date: str, tax_bracket_percent: float = 0.21) -> RuleResult:
-        """
-        US MACRS Bonus Depreciation Rule (US_MACRS_2026).
-        Calculates Depreciation Tax Shield based on bonus depreciation rates.
-        """
-        year = int(placed_in_service_date[:4])
+    def evaluate_us_45w(self, vehicle_weight_lbs: int, cost_basis_minor: int, is_tax_exempt: bool = False, is_ev: bool = True) -> RuleResult:
+        """US Section 45W Commercial Clean Vehicle Credit."""
+        # 1. Determine cap based on weight
+        if vehicle_weight_lbs < 14000:
+            cap_amount = 750000 # $7,500
+        else:
+            cap_amount = 4000000 # $40,000
 
-        bonus_rate = 0.0
-        if year == 2024:
-            bonus_rate = 0.60
-        elif year == 2025:
-            bonus_rate = 0.40
-        elif year == 2026:
-            bonus_rate = 0.20
+        # 2. Determine rate (30% for EV, 15% for Hybrid)
+        rate = 0.30 if is_ev else 0.15
 
-        # Avoid float math where possible using integer arithmetic for rate application
-        bonus_basis = 0
-        if year == 2024:
-            bonus_basis = (asset_cost_minor * 60) // 100
-        elif year == 2025:
-            bonus_basis = (asset_cost_minor * 40) // 100
-        elif year == 2026:
-            bonus_basis = (asset_cost_minor * 20) // 100
+        # 3. Calculate tentative credit
+        tentative_credit = int(cost_basis_minor * rate)
 
-        tax_savings = int(bonus_basis * tax_bracket_percent)
+        # 4. Final amount is lesser of tentative or cap
+        final_amount = min(tentative_credit, cap_amount)
 
+        # Trace
         trace = {
-            "bonus_rate": bonus_rate,
-            "tax_bracket": tax_bracket_percent
+            "vehicle_weight_lbs": vehicle_weight_lbs,
+            "cost_basis_minor": cost_basis_minor,
+            "is_ev": is_ev,
+            "cap_applied": cap_amount,
+            "tentative_credit": tentative_credit,
+            "is_tax_exempt": is_tax_exempt
         }
 
-        return RuleResult("US_MACRS_2026", True, tax_savings, trace)
+        return RuleResult("US_45W", True, final_amount, trace)
+
+    def evaluate_us_macrs(self, cost_basis_minor: int) -> RuleResult:
+        """US MACRS Depreciation Tax Shield (Placeholder)."""
+        # Placeholder: Assume 5-year property, Year 1 (20%), 21% Tax Rate
+        depreciation_deduction = cost_basis_minor * 0.20
+        tax_shield = int(depreciation_deduction * 0.21)
+
+        trace = {
+            "method": "MACRS 5-year",
+            "year": 1,
+            "basis": cost_basis_minor,
+            "tax_rate": 0.21
+        }
+        return RuleResult("US_MACRS", True, tax_shield, trace)
 
     def get_fingerprint(self) -> str:
         return hashlib.sha256(self.version.encode()).hexdigest()
