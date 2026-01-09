@@ -1,5 +1,5 @@
 import pytest
-from volltyield_platinum.battery_guardian import BatteryPassport, BatteryHealthEvent
+from voltyield_platinum.battery_guardian import BatteryPassport, BatteryHealthEvent
 
 def test_grade_a_platinum():
     # SOH > 94%, No Abuse

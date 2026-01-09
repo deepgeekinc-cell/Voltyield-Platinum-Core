@@ -1,8 +1,8 @@
 import argparse
 import sys
 import json
-from volltyield_platinum.battery_guardian import BatteryPassport, BatteryHealthEvent
-from volltyield_platinum import syndicator
+from voltyield_platinum.battery_guardian import BatteryPassport, BatteryHealthEvent
+from voltyield_platinum import syndicator
 
 def run_demo(mode: str):
     print(f"Running Platinum Demo in {mode} mode...")

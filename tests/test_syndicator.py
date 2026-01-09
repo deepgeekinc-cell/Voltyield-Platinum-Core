@@ -1,5 +1,5 @@
 import pytest
-from volltyield_platinum.syndicator import anonymize_for_export, calculate_actuarial_risk, aggregate_grid_utilization
+from voltyield_platinum.syndicator import anonymize_for_export, calculate_actuarial_risk, aggregate_grid_utilization
 
 def test_anonymize_for_export():
     raw_data = {

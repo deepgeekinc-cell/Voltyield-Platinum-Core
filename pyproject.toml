@@ -16,4 +16,4 @@ dev = ["pytest>=7.0.0"]
 
 [project.scripts]
 volltyield-ledger = "volltyield_ledger_core.cli:main"
-platinum = "volltyield_platinum.cli:main"
+platinum = "voltyield_platinum.cli:main"
