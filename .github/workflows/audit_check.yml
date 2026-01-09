@@ -1,0 +1,40 @@
+name: Audit Guardian
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[dev]"
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+    - name: Run Tests
+      run: |
+        pytest tests/test_deterministic.py
+
+    - name: Float Check (Anti-Float-Money)
+      run: |
+        # We want to avoid floats for money.
+        # This grep searches for 'float' but excludes type hints for lat/lon/confidence which are valid floats.
+        # It flags suspicious usage.
+        if grep -r "float" volltyield_ledger_core/ | grep -v "lat: float" | grep -v "lon: float" | grep -v "confidence: float" | grep -v "haversine_meters"; then
+          echo "FAIL: Float usage detected in forbidden contexts!"
+          exit 1
+        else
+          echo "PASS: No forbidden floats found."
+        fi
