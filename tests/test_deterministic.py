@@ -27,8 +27,8 @@ def test_basis_exhaustion():
     total_basis = {"GENERAL": 1000}
 
     # Define two rules worth 600 each
-    r1 = RuleResult("R1", True, 600, {})
-    r2 = RuleResult("R2", True, 600, {})
+    r1 = RuleResult("R1", True, 600, {}, "Citation 1")
+    r2 = RuleResult("R2", True, 600, {}, "Citation 2")
 
     optimizer = YieldOptimizer()
 
@@ -48,7 +48,7 @@ def test_basis_exhaustion():
 
 def test_end_to_end_determinism():
     # Run the logic twice and check chain hashes match
-    from volltyield_ledger_core.cli import run_demo
+    from volltyield_ledger_core.cli import demo_full_stack
     import sys
     from io import StringIO
 
@@ -56,11 +56,11 @@ def test_end_to_end_determinism():
     old_stdout = sys.stdout
     sys.stdout = mystdout1 = StringIO()
 
-    run_demo()
+    demo_full_stack()
     output1 = mystdout1.getvalue()
 
     sys.stdout = mystdout2 = StringIO()
-    run_demo()
+    demo_full_stack()
     output2 = mystdout2.getvalue()
 
     sys.stdout = old_stdout
