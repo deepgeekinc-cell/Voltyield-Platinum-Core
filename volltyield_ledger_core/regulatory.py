@@ -10,8 +10,41 @@ class RuleResult:
         self.trace = trace
 
 class RegulatoryEngine:
+    rules_registry = {
+        "US_45W_2026": {
+            "effective_from": "2023-01-01",
+            "effective_to": "2032-12-31",
+            "jurisdiction": "US"
+        }
+    }
+
     def __init__(self, rulepack_version: str):
         self.version = rulepack_version
+
+    def evaluate_us_45w(self, ref_date: str, vehicle_weight_lbs: int, sale_price_minor: int, is_tax_exempt_entity: bool) -> RuleResult:
+        """US Commercial Clean Vehicle Credit (Section 45W)."""
+        rule_meta = self.rules_registry["US_45W_2026"]
+
+        # Sunset Check
+        if not (rule_meta["effective_from"] <= ref_date <= rule_meta["effective_to"]):
+            return RuleResult("US_45W_2026", False, 0, {"reason": "sunset_check_failed"})
+
+        # Cap Determination
+        if vehicle_weight_lbs < 14000:
+            cap_limit = 750000  # $7,500 in minor units
+        else:
+            cap_limit = 4000000 # $40,000 in minor units
+
+        # Credit Calculation
+        calculated_15_percent = (sale_price_minor * 15) // 100
+        final_amount = min(calculated_15_percent, cap_limit)
+
+        trace = {
+            "vehicle_weight": vehicle_weight_lbs,
+            "cap_limit": cap_limit
+        }
+
+        return RuleResult("US_45W_2026", True, final_amount, trace)
 
     def evaluate_30c(self, tract_geoid: str, service_date: str, is_eligible_tract: bool) -> RuleResult:
         """US Section 30C Infrastructure Credit."""
