@@ -118,10 +118,15 @@ def demo_full_stack():
     print("-------------------------------------------------------")
 
 def main():
-    if len(sys.argv) > 1 and sys.argv[1] == "demo":
-        demo_full_stack()
-    else:
-        print("Usage: python -m volltyield_ledger_core.cli demo")
+    if len(sys.argv) > 1:
+        if sys.argv[1] == "demo":
+            demo_full_stack()
+        elif sys.argv[1] == "serve":
+            import uvicorn
+            uvicorn.run("volltyield_ledger_core.api:app", host="0.0.0.0", port=8000, reload=True)
+            return
+
+    print("Usage: python -m volltyield_ledger_core.cli [demo|serve]")
 
 if __name__ == "__main__":
     main()
