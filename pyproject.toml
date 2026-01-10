@@ -18,3 +18,6 @@ dev = ["pytest>=7.0.0", "httpx"]
 
 [project.scripts]
 voltyield-ledger = "voltyield_ledger_core.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
