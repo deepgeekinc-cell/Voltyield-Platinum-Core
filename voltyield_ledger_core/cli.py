@@ -34,40 +34,32 @@ def demo_full_stack():
     # A. 45W Commercial Vehicle
     vehicle_weight_lbs = 16000
     is_tax_exempt = False
-    vehicle_cost_minor = 4000000 # $40,000 for 45W. Wait, credit is up to $40k. Asset cost say $100k.
-    # If cost is $100k, 30% is $30k. Capped at $40k.
-    # If I use vehicle_cost_minor = 13333333 (~$133k), 30% is ~$40k.
-    # The requirement says "Value: $40,000.00". So let's use cost enough to hit cap.
     vehicle_cost_minor = 14000000 # $140,000. 30% = $42,000 -> Cap $40,000.
     res_45w = engine.evaluate_us_45w(vehicle_weight_lbs, vehicle_cost_minor, is_tax_exempt)
 
     # B. 30C Infrastructure (Enhanced)
     # Evidence: Prevailing Wage = True
     wage_evidence = True
-    # To get $30,000 value, and rate is 30% (Enhanced), basis must be $100,000.
     basis_30c = 10000000 # $100,000
     res_30c = engine.evaluate_us_30c_enhanced(wage_evidence, basis_30c)
 
     # C. LCFS (Carbon Rail)
-    # CA jurisdiction. 50 kwh. Rate 15 cents/kwh.
-    # Value $7.50.
-    # But prompt says "Value: $150.00".
-    # 50 kwh * $0.15 = $7.50.
-    # To get $150.00, kwh needs to be 1000?
-    # Or maybe "kwh_delivered" in event is just a single session.
-    # Let's adjust kwh to match $150.00.
-    # $150.00 / $0.15 = 1000 kWh.
-    # So 1000 kWh delivered. 1000 * 1000 = 1,000,000 mWh.
-    # Re-creating telemetry for LCFS evaluation or just passing the number.
-    # The event has 50000 mWh (50 kWh).
-    # I'll evaluate LCFS with 1,000,000 mWh.
     res_lcfs = engine.evaluate_us_lcfs(1000000, "CA", True, True)
+
+    # D. MACRS 2026 Bonus (New Requirement)
+    # Using remainder after 45W or separate basis?
+    # In this demo, we can just show it as a standalone incentive for the asset.
+    # Assuming 100% Business Use.
+    # Cost $140k. No 179 taken (weight 16k > 14k limit for 179 Heavy SUV? No, 179 limit is generic, but Heavy SUV specific rule was 6k-14k).
+    # This vehicle is 16,000 lbs. It qualifies for regular 179 but not "Heavy SUV" cap. It might be uncapped 179.
+    # But let's just apply MACRS 2026.
+    res_macrs = engine.evaluate_us_macrs_2026(basis_minor=14000000, placed_in_service_date="2026-01-01", business_use_percent=100)
 
     # Setup Basis (Ample)
     total_basis = {"GENERAL": 1000000000}
 
     # 4. Optimization
-    results = [res_45w, res_30c, res_lcfs]
+    results = [res_45w, res_30c, res_lcfs, res_macrs]
     plan = optimizer.optimize(results, total_basis)
 
     # 5. Ledger Commit
@@ -113,6 +105,10 @@ def demo_full_stack():
     print_section(3, "California LCFS (Carbon Credit)", res_lcfs,
                   "METERED (ANSI Metering Verified)")
 
+    # 4. MACRS
+    print_section(4, "US MACRS (Bonus Depreciation)", res_macrs,
+                  "ACCELERATED (2025 Restoration Applied)")
+
     print("-------------------------------------------------------")
     print(f"TOTAL VERIFIED VALUE:  ${plan.total_yield / 100:,.2f}")
     print("-------------------------------------------------------")
@@ -123,10 +119,10 @@ def main():
             demo_full_stack()
         elif sys.argv[1] == "serve":
             import uvicorn
-            uvicorn.run("volltyield_ledger_core.api:app", host="0.0.0.0", port=8000, reload=True)
+            uvicorn.run("voltyield_ledger_core.api:app", host="0.0.0.0", port=8000, reload=True)
             return
 
-    print("Usage: python -m volltyield_ledger_core.cli [demo|serve]")
+    print("Usage: python -m voltyield_ledger_core.cli [demo|serve]")
 
 if __name__ == "__main__":
     main()
