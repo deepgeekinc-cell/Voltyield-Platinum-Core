@@ -11,7 +11,7 @@ class RuleResult:
         self.citation = citation
 
 class RegulatoryEngine:
-    def __init__(self, rulepack_version: str):
+    def __init__(self, rulepack_version: str = "2024.1"):
         self.version = rulepack_version
 
     def evaluate_us_section_179_heavy(self, vehicle_weight_lbs: int, asset_cost_minor: int, placed_in_service_date: str, business_use_percent: int) -> RuleResult:
@@ -50,7 +50,7 @@ class RegulatoryEngine:
         }
         return RuleResult("US_SEC_179_HEAVY", True, deduction, trace, "IRC § 179(b)(5) - Heavy SUV Limitation")
 
-    def evaluate_us_macrs_2026(self, basis_minor: int, placed_in_service_date: str, business_use_percent: int) -> RuleResult:
+    def evaluate_us_macrs_2026(self, basis_minor: int, placed_in_service_date: str, business_use_percent: int = 100) -> RuleResult:
         """US MACRS Bonus Depreciation (with 2025 Restoration)."""
         # Business Use Check: > 50%
         if business_use_percent <= 50:

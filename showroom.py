@@ -2,13 +2,13 @@ import time
 import sys
 import random
 
+# Import your core engines
 try:
     # Try local dev / existing structure first
     from voltyield_ledger_core.battery import BatteryPassport, BatteryHealthEvent
     from voltyield_ledger_core.regulatory import RegulatoryEngine
 except ImportError:
     try:
-         # Fallback for user provided namespace
         from voltyield_platinum.battery_guardian import BatteryPassport, BatteryHealthEvent
         from voltyield_ledger_core.regulatory import RegulatoryEngine
     except ImportError:
@@ -72,8 +72,8 @@ def run_showroom():
     grade_result = guardian.calculate_resale_grade(event)
 
     # Tax Logic
-    reg_engine = RegulatoryEngine(rulepack_version="2024.1")
-    tax_result = reg_engine.evaluate_us_macrs_2026(cost, "2024-06-01", 100)
+    reg_engine = RegulatoryEngine()
+    tax_result = reg_engine.evaluate_us_macrs_2026(cost, "2024-06-01")
 
     # Federal is consistent everywhere
     credit_45w = min(cost * 0.30, 7500) if cost < 14000 else 40000
