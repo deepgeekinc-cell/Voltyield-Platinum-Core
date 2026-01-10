@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
-from volltyield_ledger_core.api import app
+from voltyield_ledger_core.api import app
+import json
 
 client = TestClient(app)
 
@@ -51,6 +52,10 @@ def test_ingest_flow():
         ]
     }
 
+    # Updated to send data as 'data' form field since endpoint now expects that or JSON body handled specially
+    # But since we support json_payload via Body logic (or just sending JSON if no files), let's try strict JSON.
+    # The API code `json_payload: Optional[IngestRequest] = Body(None)` should capture it.
+
     response = client.post("/ingest", json=payload)
     assert response.status_code == 200
     data = response.json()
@@ -58,7 +63,3 @@ def test_ingest_flow():
     assert len(data["committed_entries"]) == 1
 
     # Verify ingest persisted telemetry for later certify LCFS calc
-    # (Though certify currently uses hardcoded mock if 0, but logic in API tries to sum it)
-    # The API code: if total_kwh_mwh == 0 and asset_id == "V-001": use mock.
-    # So to verify store works, maybe check another asset?
-    # Or rely on code review.

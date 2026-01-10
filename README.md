@@ -1,4 +1,4 @@
-# volltyield-ledger-core
+# voltyield-ledger-core
 
 Deterministic infrastructure for auditing EV infrastructure incentives.
 
@@ -9,7 +9,7 @@ Deterministic infrastructure for auditing EV infrastructure incentives.
 `pytest tests/test_deterministic.py`
 
 ## Running the Demo
-`python -m volltyield_ledger_core.cli demo`
+`python -m voltyield_ledger_core.cli demo`
 
 ## Determinism Proof
 The system uses:
