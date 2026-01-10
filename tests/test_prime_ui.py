@@ -32,19 +32,32 @@ def test_commercial_profile_hummer_stack():
 
     ledger = data["ledger"]
 
+    # Check for Section 45W
+    res_45w = next((x for x in ledger if x["rule"] == "US_45W"), None)
+    assert res_45w is not None
+    assert res_45w["value"] == 7500.0
+
+    # Cost = 110,000.
+    # Basis Redux = 110,000 - 7,500 = 102,500.
+
     # Check for Section 179
+    # Cap = 31,300. Basis is 102,500. Min(102500, 31300) = 31300.
     s179 = next((x for x in ledger if x["rule"] == "Section 179 (Heavy)"), None)
     assert s179 is not None
     assert s179["value"] == 31300.0
 
     # Check for Bonus
+    # Remainder = 102,500 - 31,300 = 71,200.
     bonus = next((x for x in ledger if x["rule"] == "Bonus Depreciation"), None)
     assert bonus is not None
-    # 110,000 - 31,300 = 78,700
-    assert bonus["value"] == 78700.0
-    # Actually wait, cost was 110,500 in my mock?
-    # No, in code I put `cost = 11050000` ($110,500).
-    # If cost is 110,500.
+    assert bonus["value"] == 71200.0
+
+    # Total Calculation
+    # 7,500 + 31,300 + 71,200 = 110,000.
+    # Plus MV-1 ($500).
+    # Grand Total = 110,500.
+
+    assert data["grand_total"] == 110500.0
     # S179 = 31,300.
     # Bonus = 110,500 - 31,300 = 79,200.
     # Total = 110,500.

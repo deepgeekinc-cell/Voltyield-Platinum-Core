@@ -164,28 +164,39 @@ class RegulatoryEngine:
              # Maybe 30D? But prompt focuses on Commercial/Heavy stack.
              return results
 
-        # 2. Section 179 (Heavy)
-        # Cap at $31,300 if GVWR > 6000 lbs (and typically < 14000 lbs for this specific cap, but "Heavy" implies SUV rule)
-        # "Section 179 (Heavy): Cap at $31,300. (Proof: 'GVWR > 6,000 lbs')"
-        # 31,300 dollars = 3,130,000 cents
+        # 2. Section 45W (Commercial Clean Vehicle Credit)
+        # We process this first because it reduces basis for depreciation.
+        # Check if asset is eligible (Demo assumes yes for Hummer EV Commercial)
+        credit_45w_amount = 0
 
+        # We reuse the evaluate_us_45w logic but we need to integrate it.
+        # Assuming is_ev=True, is_tax_exempt=False for this commercial profile.
+        res_45w = self.evaluate_us_45w(gvwr, vehicle_cost, is_ev=True)
+        if res_45w.eligible:
+            credit_45w_amount = res_45w.amount
+            results.append(res_45w)
+
+        # 3. Section 179 (Heavy)
+        # Basis for depreciation is Cost - 45W Credit (IRC § 45W(e) -> § 30D(f) -> § 1016(a)(25))
+        depreciable_basis = vehicle_cost - credit_45w_amount
+
+        # Cap at $31,300 if GVWR > 6000 lbs
         s179_cap = 3130000
         s179_amount = 0
         if gvwr > 6000:
-             # We take the lesser of cost or cap
-             s179_amount = min(vehicle_cost, s179_cap)
+             s179_amount = min(depreciable_basis, s179_cap)
              results.append(RuleResult(
                  rule_id="Section 179 (Heavy)",
                  eligible=True,
                  amount=s179_amount,
-                 trace={"gvwr": gvwr, "cap": s179_cap},
+                 trace={"gvwr": gvwr, "cap": s179_cap, "reduced_basis": depreciable_basis},
                  citation="IRC § 179(b)(6)",
                  evidence_label=f"GVWR > 6,000 lbs"
              ))
 
-        # 3. Bonus Depreciation
-        # "100% of remainder. (Proof: '2025 Restoration Act')"
-        remaining_basis = vehicle_cost - s179_amount
+        # 4. Bonus Depreciation
+        # 100% of remainder.
+        remaining_basis = depreciable_basis - s179_amount
         bonus_amount = remaining_basis # 100%
         if bonus_amount > 0:
              results.append(RuleResult(
