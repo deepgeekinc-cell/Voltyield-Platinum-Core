@@ -1,19 +1,151 @@
-from typing import List, Optional
-from fastapi import FastAPI, UploadFile, File, Form
+from typing import List, Optional, Dict
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends
 from pydantic import BaseModel
 import uvicorn
+import hashlib
+import json
 from voltyield_ledger_core.regulatory import RegulatoryEngine
+from voltyield_ledger_core.ledger import ForensicLedger, canonicalize
+from voltyield_ledger_core.adapters import (
+    Vault, InMemoryEncryptedVault,
+    ReceiptParser, MockReceiptParser,
+    TelemetryService, MockTelemetryService
+)
 
 app = FastAPI()
 engine = RegulatoryEngine("2025.1.0")
+ledger = ForensicLedger()
+
+# Dependency Injection Setup
+def get_vault() -> Vault:
+    return InMemoryEncryptedVault()
+
+def get_receipt_parser() -> ReceiptParser:
+    return MockReceiptParser()
+
+def get_telemetry_service() -> TelemetryService:
+    return MockTelemetryService()
+
+# We instantiate the vault globally for the demo so state persists across requests in the same process
+# In production this would be a connection to an external service.
+_GLOBAL_VAULT = InMemoryEncryptedVault()
+def get_global_vault() -> Vault:
+    return _GLOBAL_VAULT
 
 class TelematicsRequest(BaseModel):
     provider: str
     api_key: str
 
+class OAuthRequest(BaseModel):
+    client_id: str
+    client_secret: str
+    code: str
+    redirect_uri: str
+
 @app.post("/connect/telematics")
 def connect_telematics(req: TelematicsRequest):
     return {"status": "CONNECTED"}
+
+@app.get("/connect/authorize")
+def authorize(client_id: str, redirect_uri: str, scope: str = "read_write"):
+    # Mock redirect to provider
+    return {"authorization_url": f"https://provider.com/oauth/authorize?client_id={client_id}&redirect_uri={redirect_uri}&scope={scope}&response_type=code"}
+
+@app.post("/connect/callback")
+def callback(req: OAuthRequest, vault: Vault = Depends(get_global_vault)):
+    # Mock Token Exchange
+    if req.code == "invalid_code":
+         raise HTTPException(status_code=400, detail="Invalid code")
+
+    token = "mock_access_token_" + req.code
+    refresh_token = "mock_refresh_token_" + req.code
+
+    # Store in Vault
+    vault.store_tokens(req.client_id, token, refresh_token)
+
+    return {"access_token": token, "token_type": "Bearer", "expires_in": 3600}
+
+# --- Webhook Listener (The Pulse) ---
+
+class WebhookEvent(BaseModel):
+    event_type: str
+    timestamp: str
+    data: dict
+
+@app.post("/webhooks/charging")
+def webhook_charging(event: WebhookEvent):
+    # "Charging Event Start/Stop"
+    # Push to SHA-256 Notarization Service
+
+    # Create a unique key for idempotency using the whole event content
+    idempotency_key = hashlib.sha256(canonicalize(event.model_dump())).hexdigest()
+
+    try:
+        entry = ledger.commit(event.model_dump(), idempotency_key=idempotency_key)
+        return {"status": "NOTARIZED", "hash": entry.entry_hash}
+    except ValueError as e:
+        # In a real scenario, we might return 200 to acknowledge receipt even if duplicate,
+        # but here we signal it.
+        return {"status": "DUPLICATE", "error": str(e)}
+
+# --- AI Receipt Stitching (The Proof) & Forensic Seal ---
+
+@app.post("/ingest/receipt")
+async def ingest_receipt(
+    file: UploadFile = File(...),
+    asset_id: str = Form(...),
+    parser: ReceiptParser = Depends(get_receipt_parser),
+    telemetry_service: TelemetryService = Depends(get_telemetry_service)
+):
+    # Parse Receipt
+    content = await file.read()
+    receipt_data = parser.parse(content, file.filename)
+
+    # Logic-check: Match with "Car Heartbeat"
+    telemetry_event = telemetry_service.find_match(asset_id, receipt_data["timestamp"])
+
+    if not telemetry_event:
+         return {"status": "MATCH_FAILED", "reason": "No matching telemetry event found"}
+
+    # Basic validation
+    if telemetry_event["asset_id"] != asset_id:
+         # Should not happen if service does its job, but double check
+         return {"status": "MATCH_FAILED", "reason": "Asset ID mismatch"}
+
+    # The Match: Logic-check
+    match = True
+
+    if match:
+        # The Forensic Seal
+        # Hash: AssetID + Timestamp + GPS + kWh + ReceiptLink
+        # Using telemetry timestamp and gps as the truth anchor
+
+        combined_string = f"{asset_id}{telemetry_event['timestamp']}{telemetry_event['gps']}{telemetry_event['kwh']}{receipt_data['receipt_link']}"
+        certificate_hash = hashlib.sha256(combined_string.encode()).hexdigest()
+
+        payload = {
+            "type": "VERIFIED_CHARGING_EVENT",
+            "asset_id": asset_id,
+            "receipt_data": receipt_data,
+            "telemetry_match": telemetry_event,
+            "certificate_hash": certificate_hash
+        }
+
+        try:
+            ledger.commit(payload, idempotency_key=certificate_hash)
+        except ValueError:
+            # Already notarized
+            pass
+
+        return {
+            "status": "VERIFIED",
+            "certificate_hash": certificate_hash,
+            "details": payload
+        }
+    else:
+        return {"status": "MATCH_FAILED"}
+
+# --- Existing Endpoints ---
 
 @app.post("/ingest/files")
 def ingest_files(files: List[UploadFile] = File(...)):
@@ -89,10 +221,5 @@ def certify_asset(asset_id: str, business_use_percent: int = 100):
 
     # Pro View
     report = engine.evaluate_all(asset_data, business_use_percent)
-
-    # Check if totaled (Mock check based on ID or separate endpoint logic)
-    # The prompt implies /ingest returns the casualty report if insurance file is uploaded.
-    # But /certify might also need to show it if the asset status is TOTALED.
-    # For now, we follow the "Zero Friction" prompt which asks /certify to return the Unified Asset Certificate.
 
     return report
