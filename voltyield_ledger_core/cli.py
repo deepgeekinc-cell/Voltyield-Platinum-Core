@@ -123,10 +123,10 @@ def main():
             demo_full_stack()
         elif sys.argv[1] == "serve":
             import uvicorn
-            uvicorn.run("volltyield_ledger_core.api:app", host="0.0.0.0", port=8000, reload=True)
+            uvicorn.run("voltyield_ledger_core.api:app", host="0.0.0.0", port=8000, reload=True)
             return
 
-    print("Usage: python -m volltyield_ledger_core.cli [demo|serve]")
+    print("Usage: python -m voltyield_ledger_core.cli [demo|serve]")
 
 if __name__ == "__main__":
     main()

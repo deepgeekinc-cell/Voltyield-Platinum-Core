@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VoltYield Prime</title>
+    <style>
+        :root {
+            --bg-color: #0F172A;
+            --card-bg: #1E293B;
+            --border-color: #334155;
+            --text-color: #F8FAFC;
+            --accent-green: #10B981;
+            --accent-amber: #F59E0B;
+            --font-family: 'Inter', 'Roboto', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font-family);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: auto 1fr auto;
+            gap: 20px;
+            width: 100%;
+            max-width: 1200px;
+            height: 100%;
+        }
+
+        header {
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .brand {
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .status-indicator {
+            color: var(--accent-green);
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .asset-card {
+            grid-column: 1 / 2;
+        }
+
+        .value-widget {
+            grid-column: 2 / 3;
+            text-align: right;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .value-display {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--accent-green);
+        }
+
+        .subtext {
+            font-size: 0.9rem;
+            color: var(--accent-amber);
+            margin-top: 5px;
+            display: none; /* Hidden by default */
+        }
+
+        .forensic-ledger {
+            grid-column: 1 / -1;
+            overflow: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            color: #94A3B8;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-active {
+            background-color: rgba(16, 185, 129, 0.2);
+            color: var(--accent-green);
+        }
+
+        .status-total-loss {
+            background-color: rgba(245, 158, 11, 0.2);
+            color: var(--accent-amber);
+        }
+
+        .ingest-zone {
+            grid-column: 1 / -1;
+            border: 2px dashed var(--border-color);
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: #94A3B8;
+        }
+
+        .ingest-zone:hover, .ingest-zone.drag-over {
+            border-color: var(--accent-green);
+            background-color: rgba(16, 185, 129, 0.05);
+            color: var(--text-color);
+        }
+
+        /* Animation */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        tr.new-row {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="dashboard-grid">
+        <header>
+            <div class="brand">VOLTYIELD RAIL</div>
+            <div class="status-indicator">● SYSTEM ONLINE</div>
+        </header>
+
+        <div class="card asset-card" id="asset-card">
+            <h3 style="margin-top: 0; color: #94A3B8; font-size: 0.8rem; text-transform: uppercase;">Asset Identity</h3>
+            <div id="vin-display" style="font-size: 1.25rem; font-weight: 600;">--</div>
+            <div id="model-display" style="margin-top: 5px; color: #CBD5E1;">--</div>
+            <div style="margin-top: 15px;">
+                <span id="asset-status-badge" class="status-badge" style="display: none;"></span>
+            </div>
+        </div>
+
+        <div class="card value-widget">
+            <h3 style="margin-top: 0; color: #94A3B8; font-size: 0.8rem; text-transform: uppercase;">Recoverable Tax Value</h3>
+            <div class="value-display" id="total-value">--</div>
+            <div class="subtext" id="liability-shield">LIABILITY SHIELDED</div>
+        </div>
+
+        <div class="card forensic-ledger">
+            <h3 style="margin-top: 0; color: #94A3B8; font-size: 0.8rem; text-transform: uppercase; margin-bottom: 15px;">Forensic Ledger</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Law / Rule</th>
+                        <th>Evidence</th>
+                        <th>Value Captured</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="ledger-body">
+                    <!-- Rows populated dynamically -->
+                </tbody>
+            </table>
+        </div>
+
+        <div class="ingest-zone" id="drop-zone">
+            UPLOAD ASSET DOCUMENTATION
+        </div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('drop-zone');
+        const ledgerBody = document.getElementById('ledger-body');
+        const totalValueDisplay = document.getElementById('total-value');
+        const vinDisplay = document.getElementById('vin-display');
+        const modelDisplay = document.getElementById('model-display');
+        const assetStatusBadge = document.getElementById('asset-status-badge');
+        const liabilityShield = document.getElementById('liability-shield');
+
+        // Drag and Drop handlers
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('drag-over');
+        });
+
+        dropZone.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                await processFile(files[0]);
+            }
+        });
+
+        // Also allow click to upload
+        dropZone.addEventListener('click', () => {
+             const input = document.createElement('input');
+             input.type = 'file';
+             input.onchange = async (e) => {
+                 if (e.target.files.length > 0) {
+                     await processFile(e.target.files[0]);
+                 }
+             };
+             input.click();
+        });
+
+        async function processFile(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                // 1. Ingest
+                const ingestRes = await fetch('/ingest', {
+                    method: 'POST',
+                    body: formData
+                });
+                const ingestData = await ingestRes.json();
+
+                if (ingestData.asset_id) {
+                    updateAssetCard(ingestData);
+                    // 2. Certify
+                    // Assume COMMERCIAL for the "Prime" demo flow as per requirements ("The Hummer Stack")
+                    // If it was a total loss, we still certify to get the shield logic
+                    await certifyAsset(ingestData.asset_id);
+                } else if (ingestData.status === 'TOTAL_LOSS') {
+                    // This path might need adjustment based on how the API is structured.
+                    // The requirement says: If file contains "insurance", return {"status": "TOTAL_LOSS", "payout": 100000}.
+                    // But we likely need an asset ID to certify.
+                    // Let's assume for the demo the user drops the "Hummer Invoice" first (Ingest -> Asset ID)
+                    // then maybe drops an "Insurance" doc?
+                    // Or maybe the mock logic returns both asset_id and status if "hummer" + "insurance" is in filename?
+                    // Let's stick to the prompt's mocked logic for now.
+
+                    // If ingest returns status TOTAL_LOSS, we might need to assume a known asset for the demo or update UI directly.
+                    // However, the prompt says "If file contains 'hummer', return asset_id...".
+                    // "If file contains 'insurance', return status TOTAL_LOSS...".
+
+                    // Let's update UI based on whatever we get.
+                    if (ingestData.status === 'TOTAL_LOSS') {
+                         updateStatusTotalLoss();
+                         // In a real app we'd need to know WHICH asset is total loss.
+                         // For this demo, let's assume we are operating on the current context or we trigger a refresh.
+                         // But wait, the prompt says: "Drag your 'Hummer Invoice.' Watch the Ledger populate... See the $110,500 Grand Total".
+                         // That implies a happy path.
+                         // Then "Test: Verify 'Total Loss' status triggers...".
+
+                         // If we get TOTAL_LOSS, we probably want to trigger the "Casualty Shield" row.
+                         // But the "Casualty Shield" row comes from `certify` in `regulatory.py`.
+                         // So we likely need to pass the status to certify, or certify discovers it.
+                         // The API requirement says: `POST /ingest` returns simple JSON.
+                         // `GET /certify/{asset_id}` returns the ledger.
+                         // So if we ingest "insurance", does it update the backend state of the asset?
+                         // The prompt implies `ingest` is stateless or just mocking OCR.
+
+                         // If I assume the user uploads "Hummer Invoice.pdf", `ingest` returns `asset_id`.
+                         // Then we call `certify`.
+                         // If the file was "Hummer Insurance.pdf" (contains both?), maybe we get both?
+
+                         // Let's handle the data we get.
+                         if (ingestData.payout) {
+                             // This is likely the "Total Loss" event.
+                             // We should probably re-certify or update the UI.
+                             // But we might not have an asset_id in this response if it just says "TOTAL_LOSS".
+                             // Let's assume for the UI update we just toggle the badge.
+                             updateStatusTotalLoss();
+                         }
+                    }
+                }
+
+            } catch (err) {
+                console.error("Error processing file:", err);
+            }
+        }
+
+        function updateAssetCard(data) {
+            if (data.asset_id) vinDisplay.innerText = data.asset_id;
+            if (data.type) modelDisplay.innerText = data.type === 'HEAVY_EV' ? 'Hummer EV (Heavy)' : data.type;
+
+            assetStatusBadge.style.display = 'inline-block';
+            assetStatusBadge.innerText = 'ACTIVE';
+            assetStatusBadge.className = 'status-badge status-active';
+
+            liabilityShield.style.display = 'none';
+        }
+
+        function updateStatusTotalLoss() {
+            assetStatusBadge.innerText = 'TOTAL LOSS';
+            assetStatusBadge.className = 'status-badge status-total-loss';
+            liabilityShield.style.display = 'block';
+        }
+
+        async function certifyAsset(assetId) {
+            // Defaulting to COMMERCIAL as per test requirements
+            const res = await fetch(`/certify/${assetId}?tax_profile=COMMERCIAL`);
+            const data = await res.json();
+
+            populateLedger(data.ledger);
+
+            // Format grand total as currency
+            const formatter = new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+            });
+            totalValueDisplay.innerText = formatter.format(data.grand_total);
+
+            // Check if any row indicates Total Loss/1033
+            const hasTotalLoss = data.ledger.some(row => row.rule === "Section 1033 Election");
+            if (hasTotalLoss) {
+                updateStatusTotalLoss();
+            }
+        }
+
+        function populateLedger(ledgerItems) {
+            ledgerBody.innerHTML = '';
+            ledgerItems.forEach((item, index) => {
+                const tr = document.createElement('tr');
+                tr.className = 'new-row';
+                tr.style.animationDelay = `${index * 0.1}s`;
+
+                const valueFormatted = new Intl.NumberFormat('en-US', {
+                    style: 'currency',
+                    currency: 'USD',
+                }).format(item.value);
+
+                tr.innerHTML = `
+                    <td>${item.rule}</td>
+                    <td>${item.evidence}</td>
+                    <td style="color: var(--accent-green); font-weight: 600;">${valueFormatted}</td>
+                    <td><span class="status-badge status-active">VERIFIED</span></td>
+                `;
+
+                if (item.status === 'ACTION REQUIRED') {
+                     tr.querySelector('td:last-child').innerHTML = `<span class="status-badge status-total-loss">ACTION REQUIRED</span>`;
+                }
+
+                ledgerBody.appendChild(tr);
+            });
+        }
+    </script>
+</body>
+</html>

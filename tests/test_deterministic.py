@@ -1,7 +1,7 @@
 import pytest
-from volltyield_ledger_core.ledger import ForensicLedger, canonicalize
-from volltyield_ledger_core.yield_guard import YieldOptimizer
-from volltyield_ledger_core.regulatory import RuleResult
+from voltyield_ledger_core.ledger import ForensicLedger, canonicalize
+from voltyield_ledger_core.yield_guard import YieldOptimizer
+from voltyield_ledger_core.regulatory import RuleResult
 
 def test_ledger_determinism():
     payload = {"amount": 100, "asset": "V1", "nested": {"z": 1, "a": 2}}
@@ -48,7 +48,7 @@ def test_basis_exhaustion():
 
 def test_end_to_end_determinism():
     # Run the logic twice and check chain hashes match
-    from volltyield_ledger_core.cli import demo_full_stack
+    from voltyield_ledger_core.cli import demo_full_stack
     import sys
     from io import StringIO
 

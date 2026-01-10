@@ -32,7 +32,7 @@ jobs:
         # We want to avoid floats for money.
         # This grep searches for 'float' but excludes type hints for lat/lon/confidence which are valid floats.
         # It flags suspicious usage.
-        if grep -r "float" volltyield_ledger_core/ | grep -v "lat: float" | grep -v "lon: float" | grep -v "confidence: float" | grep -v "haversine_meters"; then
+        if grep -r "float" voltyield_ledger_core/ | grep -v "lat: float" | grep -v "lon: float" | grep -v "confidence: float" | grep -v "haversine_meters"; then
           echo "FAIL: Float usage detected in forbidden contexts!"
           exit 1
         else
