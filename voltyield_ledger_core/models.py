@@ -1,36 +1,14 @@
-from enum import Enum
-from typing import Dict, Any, List, Optional
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel
+from typing import List
 
-class AuditState(str, Enum):
-    PROPOSED = "PROPOSED"
-    MATCHED = "MATCHED"
-    VERIFIED = "VERIFIED"
-    COMMITTED = "COMMITTED"
-    REJECTED = "REJECTED"
+class TelemetryData(BaseModel):
+    sensor: str
+    value: float
 
-class TelemetryEvent(BaseModel):
-    model_config = ConfigDict(frozen=True)
-    asset_id: str
-    timestamp_iso: str  # ISO8601 UTC
-    lat: float
-    lon: float
-    kwh_delivered: int  # Minor units (mWh)
-    status: str
-    unbroken_lineage: bool = False  # For HMRC Digital Links
-    metadata: Dict[str, Any] = Field(default_factory=dict)
-
-class Receipt(BaseModel):
-    model_config = ConfigDict(frozen=True)
-    receipt_id: str
-    vendor: str
-    amount_minor: int
-    currency: str
-    timestamp_iso: str
-    confidence: float
-
-class BasisSlice(BaseModel):
-    model_config = ConfigDict(frozen=True)
-    asset_id: str
-    amount_minor: int
-    category: str  # e.g., "EQUIPMENT", "INSTALLATION"
+class TelemetryBatch(BaseModel):
+    batch_id: str
+    region: str = "US"
+    asset_cost: float = 0.0
+    is_heavy_duty: bool = False
+    qualified_zone: bool = False
+    data: List[TelemetryData]

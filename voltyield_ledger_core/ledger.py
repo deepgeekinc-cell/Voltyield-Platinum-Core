@@ -1,38 +1,64 @@
 import json
+import os
 import hashlib
-from typing import Dict, Any, Optional, List
-from .models import AuditState
+from datetime import datetime
 
-def canonicalize(data: Dict[str, Any]) -> bytes:
-    """Deterministic JSON serialization: sorted keys, no whitespace, UTC strings."""
-    return json.dumps(data, sort_keys=True, separators=(",", ":")).encode("utf-8")
+# Absolute Path for the Ledger
+LEDGER_PATH = "/home/deepgeekinc/Voltyield-Platinum-Core/audit_trail.log"
 
-class LedgerEntry:
-    def __init__(self, payload: Dict[str, Any], prev_hash: Optional[str] = None):
-        self.payload = payload
-        self.entry_hash = hashlib.sha256(canonicalize(payload)).hexdigest()
-        self.prev_hash = prev_hash
+def get_last_hash():
+    if not os.path.exists(LEDGER_PATH) or os.stat(LEDGER_PATH).st_size == 0:
+        return "GENESIS_BLOCK"
+    with open(LEDGER_PATH, "rb") as f:
+        try:
+            f.seek(-2, os.SEEK_END)
+            while f.read(1) != b"\n":
+                f.seek(-2, os.SEEK_CUR)
+            last_line = f.readline().decode()
+            return json.loads(last_line).get("hash", "ERROR")
+        except:
+            return "GENESIS_BLOCK"
 
-        chain_input = (prev_hash or "") + self.entry_hash
-        self.chain_hash = hashlib.sha256(chain_input.encode()).hexdigest()
+def record_entry(batch_data: dict):
+    prev_hash = get_last_hash()
+    region = batch_data.get("region", "US")
+    asset_cost = batch_data.get("asset_cost", 0)
+    
+    stack = {}
+    
+    # --- TRANS-ATLANTIC STACKING LOGIC ---
+    if region == "US":
+        # Sec 45W: Commercial Vehicle ($40k heavy / $7.5k light)
+        stack["sec_45W_vehicle"] = 40000.00 if batch_data.get("is_heavy_duty") else 7500.00
+        # Sec 30C: Infrastructure ($100k in qualified zones)
+        stack["sec_30C_infra"] = 100000.00 if batch_data.get("qualified_zone") else 0.0
+        # Sec 48: ITC Stack (30% Base + 10% Domestic + 10% Energy Community = 50% Total)
+        stack["sec_48_itc_stack"] = asset_cost * 0.50
+        # Voluntary Carbon Integrity Premium
+        stack["carbon_yield"] = len(batch_data.get('data', [])) * 75.0
+        
+    elif region == "UK_EU":
+        # UK Super Deduction (130% Capital Allowance)
+        stack["uk_super_deduction"] = asset_cost * 1.30
+        # EU Carbon Allowances (ETS Pricing)
+        stack["eu_carbon_credits"] = len(batch_data.get('data', [])) * 85.0
 
-class ForensicLedger:
-    def __init__(self):
-        self.entries: List[LedgerEntry] = []
-        self.idempotency_keys: set[str] = set()
-        self.anti_double_count_keys: set[str] = set()
+    total_yield = sum(v for v in stack.values() if isinstance(v, (int, float)))
 
-    def commit(self, payload: Dict[str, Any], idempotency_key: str, adc_key: Optional[str] = None) -> LedgerEntry:
-        if idempotency_key in self.idempotency_keys:
-            raise ValueError(f"Idempotency violation: {idempotency_key}")
-        if adc_key and adc_key in self.anti_double_count_keys:
-            raise ValueError(f"Double-count protection triggered: {adc_key}")
-
-        prev_hash = self.entries[-1].chain_hash if self.entries else None
-        entry = LedgerEntry(payload, prev_hash)
-
-        self.entries.append(entry)
-        self.idempotency_keys.add(idempotency_key)
-        if adc_key:
-            self.anti_double_count_keys.add(adc_key)
-        return entry
+    entry_payload = {
+        "timestamp": datetime.utcnow().isoformat(),
+        "jurisdiction": region,
+        "stack_analysis": {k: f"${v:,.2f}" for k, v in stack.items()},
+        "total_maximized_yield": f"${total_yield:,.2f}",
+        "prev_hash": prev_hash,
+        "status": "INKED_TO_RAIL"
+    }
+    
+    # Cryptographic Chaining
+    entry_json = json.dumps(entry_payload, sort_keys=True)
+    entry_payload["hash"] = hashlib.sha256(entry_json.encode()).hexdigest()
+    
+    with open(LEDGER_PATH, "a") as f:
+        f.write(json.dumps(entry_payload) + "\n")
+        f.flush()
+        os.fsync(f.fileno())
